@@ -2,6 +2,7 @@ package com.byhenriquesilva.atlasdemods.ui.screens.detail
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -22,6 +23,7 @@ import com.byhenriquesilva.atlasdemods.network.model.Mod
 import com.byhenriquesilva.atlasdemods.ui.components.GalleryRow
 import com.byhenriquesilva.atlasdemods.ui.components.HtmlText
 import com.byhenriquesilva.atlasdemods.ui.components.ModIcon
+import com.byhenriquesilva.atlasdemods.ui.theme.stepEdgeShape
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -65,7 +67,7 @@ fun ModDetailScreen(repository: ModsRepository, modId: String, baseUrl: String, 
                         .padding(16.dp),
                 ) {
                     Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                        ModIcon(iconUrl = mod.iconUrl, size = 64.dp)
+                        ModIcon(iconUrl = mod.iconUrl, fallbackText = mod.name.take(2).uppercase(), size = 64.dp)
                         Spacer(Modifier.width(14.dp))
                         Column {
                             Text(mod.name, style = MaterialTheme.typography.headlineSmall)
@@ -84,23 +86,32 @@ fun ModDetailScreen(repository: ModsRepository, modId: String, baseUrl: String, 
                     }
 
                     Spacer(Modifier.height(16.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Button(onClick = {
-                            val url = mod.resolvedDownloadUrl(baseUrl)
-                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-                        }) {
-                            Icon(Icons.Filled.Download, contentDescription = null)
-                            Spacer(Modifier.width(6.dp))
-                            Text("Baixar .jar")
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Button(
+                            onClick = {
+                                val url = mod.resolvedDownloadUrl(baseUrl)
+                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                            },
+                            shape = stepEdgeShape(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary,
+                            ),
+                        ) {
+                            Text(
+                                "baixar ${mod.file}",
+                                style = MaterialTheme.typography.labelLarge,
+                            )
                         }
                         if (!mod.modrinth.isNullOrBlank()) {
-                            OutlinedButton(onClick = {
-                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(mod.modrinth)))
-                            }) {
-                                Icon(Icons.Filled.OpenInBrowser, contentDescription = null)
-                                Spacer(Modifier.width(6.dp))
-                                Text("Modrinth")
-                            }
+                            Text(
+                                "ver no modrinth ↗",
+                                style = com.byhenriquesilva.atlasdemods.ui.theme.LinkStyle,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.clickable {
+                                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(mod.modrinth)))
+                                },
+                            )
                         }
                     }
 

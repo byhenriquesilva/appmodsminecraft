@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Monograma "A" (de Atlas) em blocos de 8px, no estilo pixel do site (fonte
+  Silkscreen do wordmark "ATLAS"), na cor --torch. Gerado por script a partir
+  de uma grade 8x8, centralizado nos 64dp seguros do ícone adaptativo.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFF09638"
+        android:pathData="M46,22h16v8h-16zM38,30h32v8h-32zM30,38h16v8h-16zM62,38h16v8h-16zM30,46h16v8h-16zM62,46h16v8h-16zM30,54h48v8h-48zM30,62h16v8h-16zM62,62h16v8h-16zM30,70h16v8h-16zM62,70h16v8h-16zM30,78h16v8h-16zM62,78h16v8h-16z" />
+</vector>

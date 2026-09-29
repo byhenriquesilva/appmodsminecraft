@@ -2,11 +2,18 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Só usada em Android 8/9 (API 26-28) pra salvar o .zip de "baixar tudo"
+         na pasta pública de Downloads — no 10+ isso é feito via MediaStore,
+         sem precisar de permissão. -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
 
     <application
         android:name=".AtlasApp"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:label="@string/app_name"
         android:theme="@style/Theme.AtlasDeMods"
         android:usesCleartextTraffic="false">

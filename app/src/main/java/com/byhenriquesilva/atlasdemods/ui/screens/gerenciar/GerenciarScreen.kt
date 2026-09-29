@@ -88,7 +88,7 @@ fun GerenciarScreen(repository: ModsRepository, secretStore: SecretStore, onBack
                         ) {
                             Checkbox(checked = checked, onCheckedChange = { viewModel.toggleSelection(mod.id) })
                             Spacer(Modifier.width(6.dp))
-                            ModIcon(iconUrl = mod.iconUrl, size = 36.dp)
+                            ModIcon(iconUrl = mod.iconUrl, fallbackText = mod.name.take(2).uppercase(), size = 36.dp)
                             Spacer(Modifier.width(10.dp))
                             Column(Modifier.weight(1f)) {
                                 Text(mod.name, style = MaterialTheme.typography.bodyLarge)

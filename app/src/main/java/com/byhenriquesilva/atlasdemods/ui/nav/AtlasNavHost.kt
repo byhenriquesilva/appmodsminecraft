@@ -31,6 +31,7 @@ fun AtlasNavHost(repository: ModsRepository, secretStore: SecretStore) {
         composable(Routes.CATALOG) {
             CatalogScreen(
                 repository = repository,
+                secretStore = secretStore,
                 onOpenMod = { id -> navController.navigate(Routes.detail(id)) },
                 onOpenEnviar = { navController.navigate(Routes.ENVIAR) },
                 onOpenGerenciar = { navController.navigate(Routes.GERENCIAR) },
