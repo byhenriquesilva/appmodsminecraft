@@ -28,14 +28,4 @@ admin, criptografada no aparelho.
   senha).
 - `ui/nav/AtlasNavHost.kt` — as cinco telas acima.
 
-## Limitações conhecidas do esqueleto
 
-- **Descrição do mod:** o servidor manda HTML sanitizado; o app usa
-  `Html.fromHtml` (texto, links, listas), que ignora `<table>` e não baixa
-  `<img>` inline. Está documentado em `ui/components/HtmlText.kt`, com a
-  alternativa (WebView isolada só pra esse HTML) comentada ali.
-- **Sem testes automatizados, sem Hilt, sem paginação** — é um esqueleto
-  funcional pensado pra você evoluir, não um produto terminado.
-- **Ícone do app:** usa o `ic_launcher` padrão do Android Studio (o projeto
-  não inclui um `mipmap` customizado) — troque pelo assistente de ícones do
-  próprio Android Studio (botão direito em `res` → New → Image Asset).
