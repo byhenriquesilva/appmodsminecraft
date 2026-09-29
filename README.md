@@ -15,11 +15,6 @@ admin, criptografada no aparelho.
    app depois de instalado (fica salvo).
 4. Sync do Gradle e Run. `minSdk 26` (Android 8+), `compileSdk`/`targetSdk 35`.
 
-Este projeto não foi compilado neste ambiente (não há SDK do Android aqui) —
-os arquivos foram revisados um a um, mas o primeiro `Gradle Sync` no Android
-Studio é o teste real. Erros de sync mais prováveis: versão do AGP/Kotlin
-desatualizada no seu Android Studio (ajuste em `libs.versions.toml`).
-
 ## Estrutura
 
 - `network/` — `AtlasApi` (Retrofit), `ApiClient`, `model/Mod.kt` (todos os
