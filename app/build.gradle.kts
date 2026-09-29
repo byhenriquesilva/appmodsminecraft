@@ -18,7 +18,7 @@ android {
 
         // Troque pelo domínio real do seu deploy na Vercel, ou configure
         // depois pela tela de Ajustes do app (fica salvo, isso aqui é só o padrão inicial).
-        buildConfigField("String", "DEFAULT_BASE_URL", "\"https://SEU-SITE.vercel.app/\"")
+        buildConfigField("String", "DEFAULT_BASE_URL", "\"https://sitemodsminecraft.vercel.app/\"")
     }
 
     buildFeatures {
