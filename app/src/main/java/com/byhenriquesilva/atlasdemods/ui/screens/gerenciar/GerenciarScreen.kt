@@ -3,10 +3,10 @@ package com.byhenriquesilva.atlasdemods.ui.screens.gerenciar
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -21,7 +21,12 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.byhenriquesilva.atlasdemods.data.ModsRepository
 import com.byhenriquesilva.atlasdemods.data.SecretStore
+import com.byhenriquesilva.atlasdemods.network.model.Mod
+import com.byhenriquesilva.atlasdemods.ui.components.FilterPill
+import com.byhenriquesilva.atlasdemods.ui.components.GhostButton
 import com.byhenriquesilva.atlasdemods.ui.components.ModIcon
+import com.byhenriquesilva.atlasdemods.ui.components.PrimaryStepButton
+import com.byhenriquesilva.atlasdemods.ui.components.RuleBox
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -29,38 +34,83 @@ fun GerenciarScreen(repository: ModsRepository, secretStore: SecretStore, onBack
     val viewModel: GerenciarViewModel = viewModel(
         factory = viewModelFactory { initializer { GerenciarViewModel(repository) } },
     )
-    var showConfirm by remember { mutableStateOf(false) }
     val state = viewModel.uiState
+    var showBulkConfirm by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Gerenciar mods") },
+                title = { Text("gerenciar", style = MaterialTheme.typography.labelMedium) },
                 navigationIcon = {
                     IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, contentDescription = "Voltar") }
-                },
-                actions = {
-                    if (viewModel.selectedIds.isNotEmpty()) {
-                        TextButton(onClick = { showConfirm = true }) {
-                            Text("Remover (${viewModel.selectedIds.size})")
-                        }
-                    }
                 },
             )
         },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
-            if (!secretStore.hasAdminSecret) {
-                Surface(color = MaterialTheme.colorScheme.errorContainer) {
-                    Text(
-                        "Configure a senha de admin em Ajustes antes de remover mods.",
-                        modifier = Modifier.padding(12.dp),
-                        color = MaterialTheme.colorScheme.onErrorContainer,
-                    )
+            Column(Modifier.padding(horizontal = 20.dp, vertical = 12.dp)) {
+                Row {
+                    Text("Gerenciar mods", style = MaterialTheme.typography.headlineMedium)
+                    Text(".", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
+                }
+
+                if (!secretStore.hasAdminSecret) {
+                    Spacer(Modifier.height(12.dp))
+                    RuleBox {
+                        Text(
+                            "Configure a senha de admin em Ajustes antes de remover mods.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
+                viewModel.deleteError?.let {
+                    Spacer(Modifier.height(12.dp))
+                    RuleBox { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary) }
                 }
             }
-            viewModel.deleteError?.let {
-                Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(12.dp))
+
+            if (state is GerenciarUiState.Loaded && viewModel.availableVersions.isNotEmpty()) {
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 20.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    item {
+                        FilterPill(
+                            text = "todas as versões",
+                            active = viewModel.selectedVersion == null,
+                            onClick = { viewModel.onSelectVersion(null) },
+                        )
+                    }
+                    items(viewModel.availableVersions) { v ->
+                        FilterPill(text = v, active = viewModel.selectedVersion == v, onClick = { viewModel.onSelectVersion(v) })
+                    }
+                }
+
+                Spacer(Modifier.height(12.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    val visibleIds = viewModel.visibleMods.map { it.id }.toSet()
+                    val allSelected = visibleIds.isNotEmpty() && visibleIds.all { it in viewModel.selectedIds }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.clickable { viewModel.toggleAllVisible() },
+                    ) {
+                        Checkbox(checked = allSelected, onCheckedChange = { viewModel.toggleAllVisible() })
+                        Text("selecionar todos (${visibleIds.size})", style = MaterialTheme.typography.labelMedium)
+                    }
+                    PrimaryStepButton(
+                        text = "excluir (${viewModel.selectedIds.size})",
+                        onClick = { showBulkConfirm = true },
+                        enabled = viewModel.selectedIds.isNotEmpty() && !viewModel.isDeleting,
+                    )
+                }
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             }
 
             when (state) {
@@ -70,56 +120,53 @@ fun GerenciarScreen(repository: ModsRepository, secretStore: SecretStore, onBack
 
                 is GerenciarUiState.Error -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(state.message)
+                        Text(state.message, style = MaterialTheme.typography.bodyMedium)
                         Spacer(Modifier.height(12.dp))
-                        Button(onClick = viewModel::refresh) { Text("Tentar de novo") }
+                        GhostButton(text = "tentar de novo", onClick = viewModel::refresh)
                     }
                 }
 
-                is GerenciarUiState.Loaded -> LazyColumn(contentPadding = PaddingValues(bottom = 24.dp)) {
-                    items(state.mods, key = { it.id }) { mod ->
-                        val checked = mod.id in viewModel.selectedIds
-                        Row(
-                            Modifier
-                                .fillMaxWidth()
-                                .clickable { viewModel.toggleSelection(mod.id) }
-                                .padding(horizontal = 12.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Checkbox(checked = checked, onCheckedChange = { viewModel.toggleSelection(mod.id) })
-                            Spacer(Modifier.width(6.dp))
-                            ModIcon(iconUrl = mod.iconUrl, fallbackText = mod.name.take(2).uppercase(), size = 36.dp)
-                            Spacer(Modifier.width(10.dp))
-                            Column(Modifier.weight(1f)) {
-                                Text(mod.name, style = MaterialTheme.typography.bodyLarge)
-                                Text("MC ${mod.mc} · ${mod.category}", style = MaterialTheme.typography.bodySmall)
+                is GerenciarUiState.Loaded -> {
+                    val mods = viewModel.visibleMods
+                    if (mods.isEmpty()) {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("Nenhum mod nessa versão.", style = MaterialTheme.typography.bodyMedium)
+                        }
+                    } else {
+                        LazyColumn(contentPadding = PaddingValues(horizontal = 20.dp, vertical = 4.dp)) {
+                            items(mods, key = { it.id }) { mod ->
+                                GerenciarRow(
+                                    mod = mod,
+                                    checked = mod.id in viewModel.selectedIds,
+                                    onToggle = { viewModel.toggleSelection(mod.id) },
+                                    onDelete = { viewModel.requestDeleteSingle(mod) },
+                                )
                             }
                         }
-                        HorizontalDivider()
                     }
                 }
             }
         }
     }
 
-    if (showConfirm) {
+    if (showBulkConfirm) {
         AlertDialog(
-            onDismissRequest = { showConfirm = false },
-            icon = { Icon(Icons.Filled.Delete, contentDescription = null) },
+            onDismissRequest = { showBulkConfirm = false },
             title = { Text("Remover ${viewModel.selectedIds.size} mod(s)?") },
             text = { Text("Isso remove o(s) mod(s) e o(s) arquivo(s) .jar do repositório. Não dá pra desfazer.") },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        showConfirm = false
-                        viewModel.confirmDelete()
+                        showBulkConfirm = false
+                        viewModel.confirmDeleteSelected()
                     },
                     enabled = !viewModel.isDeleting,
                 ) { Text("Remover") }
             },
-            dismissButton = { TextButton(onClick = { showConfirm = false }) { Text("Cancelar") } },
+            dismissButton = { TextButton(onClick = { showBulkConfirm = false }) { Text("Cancelar") } },
         )
     }
+    ConfirmSingleDeleteDialog(viewModel)
 
     viewModel.lastDeletedNames?.let { names ->
         AlertDialog(
@@ -129,4 +176,44 @@ fun GerenciarScreen(repository: ModsRepository, secretStore: SecretStore, onBack
             text = { Text(names.joinToString("\n")) },
         )
     }
+}
+
+@Composable
+private fun GerenciarRow(mod: Mod, checked: Boolean, onToggle: () -> Unit, onDelete: () -> Unit) {
+    Column {
+        Row(
+            Modifier.fillMaxWidth().padding(vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Checkbox(checked = checked, onCheckedChange = { onToggle() })
+            Spacer(Modifier.width(4.dp))
+            ModIcon(iconUrl = mod.iconUrl, fallbackText = mod.name.take(2).uppercase(), size = 36.dp)
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Text(mod.name, style = MaterialTheme.typography.bodyLarge, maxLines = 1)
+                Text(
+                    "${mod.mc} · ${mod.size}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Spacer(Modifier.width(8.dp))
+            GhostButton(text = "excluir ✕", onClick = onDelete)
+        }
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f))
+    }
+}
+
+@Composable
+private fun ConfirmSingleDeleteDialog(viewModel: GerenciarViewModel) {
+    val mod = viewModel.pendingSingleDelete ?: return
+    AlertDialog(
+        onDismissRequest = viewModel::dismissSingleDelete,
+        title = { Text("Remover \"${mod.name}\"?") },
+        text = { Text("Isso remove o mod e o arquivo .jar do repositório. Não dá pra desfazer.") },
+        confirmButton = {
+            TextButton(onClick = viewModel::confirmDeleteSingle, enabled = !viewModel.isDeleting) { Text("Remover") }
+        },
+        dismissButton = { TextButton(onClick = viewModel::dismissSingleDelete) { Text("Cancelar") } },
+    )
 }

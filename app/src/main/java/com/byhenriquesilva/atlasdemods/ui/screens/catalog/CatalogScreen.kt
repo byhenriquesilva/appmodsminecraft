@@ -110,15 +110,13 @@ fun CatalogScreen(
         },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
-            OutlinedTextField(
+            com.byhenriquesilva.atlasdemods.ui.components.UnderlineField(
                 value = viewModel.query,
                 onValueChange = viewModel::onQueryChange,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                placeholder = { Text("buscar", style = MaterialTheme.typography.labelMedium) },
-                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-                singleLine = true,
-                shape = androidx.compose.ui.graphics.RectangleShape,
+                label = "buscar",
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             )
+            Spacer(Modifier.height(4.dp))
 
             if (state is CatalogUiState.Loaded && viewModel.availableVersions.isNotEmpty()) {
                 LazyRow(

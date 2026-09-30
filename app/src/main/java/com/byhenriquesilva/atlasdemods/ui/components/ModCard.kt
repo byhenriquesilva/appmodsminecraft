@@ -69,15 +69,7 @@ fun ModCard(mod: Mod, onClick: () -> Unit, onDownloadClick: () -> Unit, modifier
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(Modifier.width(10.dp))
-            OutlinedButton(
-                onClick = onDownloadClick,
-                shape = RectangleShape,
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                colors = OutlinedButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-            ) {
-                Text("baixar ↓", style = MaterialTheme.typography.labelMedium)
-            }
+            com.byhenriquesilva.atlasdemods.ui.components.GhostButton(text = "baixar ↓", onClick = onDownloadClick)
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f))
     }

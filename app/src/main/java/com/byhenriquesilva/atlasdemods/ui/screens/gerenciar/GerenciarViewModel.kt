@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.byhenriquesilva.atlasdemods.data.ApiFailure
 import com.byhenriquesilva.atlasdemods.data.ModsRepository
+import com.byhenriquesilva.atlasdemods.data.distinctVersionsDesc
 import com.byhenriquesilva.atlasdemods.network.model.Mod
 import kotlinx.coroutines.launch
 
@@ -21,6 +22,10 @@ class GerenciarViewModel(private val repository: ModsRepository) : ViewModel() {
     var uiState: GerenciarUiState by mutableStateOf(GerenciarUiState.Loading)
         private set
 
+    /** `null` = "todas as versões", igual ao `gerenciar.tsx` do site (que abre nesse padrão). */
+    var selectedVersion: String? by mutableStateOf(null)
+        private set
+
     var selectedIds by mutableStateOf(emptySet<String>())
         private set
 
@@ -30,6 +35,20 @@ class GerenciarViewModel(private val repository: ModsRepository) : ViewModel() {
         private set
     var lastDeletedNames: List<String>? by mutableStateOf(null)
         private set
+
+    /** Só pra confirmar exclusão de um único mod pelo botão "excluir" da linha. */
+    var pendingSingleDelete: Mod? by mutableStateOf(null)
+        private set
+
+    val availableVersions: List<String>
+        get() = (uiState as? GerenciarUiState.Loaded)?.let { distinctVersionsDesc(it.mods.map { m -> m.mc }) }.orEmpty()
+
+    val visibleMods: List<Mod>
+        get() {
+            val all = (uiState as? GerenciarUiState.Loaded)?.mods.orEmpty()
+            val v = selectedVersion ?: return all
+            return all.filter { it.mc == v }
+        }
 
     init {
         refresh()
@@ -47,17 +66,44 @@ class GerenciarViewModel(private val repository: ModsRepository) : ViewModel() {
         }
     }
 
+    fun onSelectVersion(version: String?) {
+        selectedVersion = version
+    }
+
     fun toggleSelection(id: String) {
         selectedIds = if (id in selectedIds) selectedIds - id else selectedIds + id
     }
 
-    fun clearSelection() {
-        selectedIds = emptySet()
+    fun toggleAllVisible() {
+        val visibleIds = visibleMods.map { it.id }.toSet()
+        selectedIds = if (visibleIds.isNotEmpty() && visibleIds.all { it in selectedIds }) {
+            selectedIds - visibleIds
+        } else {
+            selectedIds + visibleIds
+        }
     }
 
-    fun confirmDelete() {
+    fun requestDeleteSingle(mod: Mod) {
+        pendingSingleDelete = mod
+    }
+
+    fun dismissSingleDelete() {
+        pendingSingleDelete = null
+    }
+
+    fun confirmDeleteSingle() {
+        val mod = pendingSingleDelete ?: return
+        pendingSingleDelete = null
+        runDelete(listOf(mod.id))
+    }
+
+    fun confirmDeleteSelected() {
         val ids = selectedIds.toList()
         if (ids.isEmpty()) return
+        runDelete(ids)
+    }
+
+    private fun runDelete(ids: List<String>) {
         isDeleting = true
         deleteError = null
         viewModelScope.launch {

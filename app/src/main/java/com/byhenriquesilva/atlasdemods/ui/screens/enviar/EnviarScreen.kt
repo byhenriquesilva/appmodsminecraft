@@ -2,7 +2,6 @@ package com.byhenriquesilva.atlasdemods.ui.screens.enviar
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -14,12 +13,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.byhenriquesilva.atlasdemods.data.ModsRepository
 import com.byhenriquesilva.atlasdemods.data.SecretStore
+import com.byhenriquesilva.atlasdemods.ui.components.FilterPill
+import com.byhenriquesilva.atlasdemods.ui.components.GhostButton
+import com.byhenriquesilva.atlasdemods.ui.components.PrimaryStepButton
+import com.byhenriquesilva.atlasdemods.ui.components.RuleBox
+import com.byhenriquesilva.atlasdemods.ui.components.UnderlineField
 
 private enum class EnviarModo { UNICO, LOTE }
 
@@ -34,7 +39,7 @@ fun EnviarScreen(repository: ModsRepository, secretStore: SecretStore, onBack: (
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Enviar mod") },
+                title = { Text("enviar", style = MaterialTheme.typography.labelMedium) },
                 navigationIcon = {
                     IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, contentDescription = "Voltar") }
                 },
@@ -46,33 +51,40 @@ fun EnviarScreen(repository: ModsRepository, secretStore: SecretStore, onBack: (
                 .padding(padding)
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
+                .padding(horizontal = 20.dp, vertical = 16.dp),
         ) {
+            Text("novo mod", style = MaterialTheme.typography.labelMedium)
+            Spacer(Modifier.height(6.dp))
+            Row {
+                Text("Enviar mod", style = MaterialTheme.typography.headlineLarge)
+                Text(".", style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.primary)
+            }
+            Spacer(Modifier.height(10.dp))
+            Text(
+                "Cole a URL (ou o slug) do mod no Modrinth. Com um link só, você escolhe a versão de Minecraft. Com vários, cada um usa a versão mais nova disponível.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            Spacer(Modifier.height(24.dp))
+
             if (!secretStore.hasAdminSecret) {
-                Surface(color = MaterialTheme.colorScheme.errorContainer, shape = MaterialTheme.shapes.medium) {
+                RuleBox {
                     Text(
                         "Configure a senha de admin em Ajustes antes de enviar um mod.",
-                        modifier = Modifier.padding(12.dp),
-                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
                     )
                 }
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(20.dp))
             }
 
-            SingleChoiceSegmentedButtonRow {
-                SegmentedButton(
-                    selected = modo == EnviarModo.UNICO,
-                    onClick = { modo = EnviarModo.UNICO },
-                    shape = SegmentedButtonDefaults.itemShape(0, 2),
-                ) { Text("Um mod") }
-                SegmentedButton(
-                    selected = modo == EnviarModo.LOTE,
-                    onClick = { modo = EnviarModo.LOTE },
-                    shape = SegmentedButtonDefaults.itemShape(1, 2),
-                ) { Text("Vários (últimas versões)") }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterPill(text = "um mod", active = modo == EnviarModo.UNICO, onClick = { modo = EnviarModo.UNICO })
+                FilterPill(text = "vários (últimas versões)", active = modo == EnviarModo.LOTE, onClick = { modo = EnviarModo.LOTE })
             }
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(20.dp))
 
             if (modo == EnviarModo.UNICO) {
                 SingleModForm(viewModel)
@@ -81,125 +93,126 @@ fun EnviarScreen(repository: ModsRepository, secretStore: SecretStore, onBack: (
             }
 
             viewModel.submitError?.let { msg ->
-                Spacer(Modifier.height(12.dp))
-                Text(msg, color = MaterialTheme.colorScheme.error)
+                Spacer(Modifier.height(16.dp))
+                RuleBox { Text(msg, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary) }
+            }
+
+            viewModel.outcome?.let { outcome ->
+                Spacer(Modifier.height(20.dp))
+                OutcomePanel(outcome)
             }
         }
-    }
-
-    viewModel.outcome?.let { outcome ->
-        AlertDialog(
-            onDismissRequest = viewModel::dismissOutcome,
-            confirmButton = { TextButton(onClick = viewModel::dismissOutcome) { Text("OK") } },
-            title = { Text("Envio concluído") },
-            text = {
-                when (outcome) {
-                    is SubmitOutcome.Single -> Column {
-                        Text("\"${outcome.modName}\" foi adicionado.")
-                        Text(
-                            "O mod aparece no catálogo depois que o deploy da Vercel terminar (~1 min).",
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                    }
-
-                    is SubmitOutcome.Bulk -> Column {
-                        outcome.results.forEach { r ->
-                            val prefix = if (r.status == "ok") "✔" else "✘"
-                            Text("$prefix ${r.mod?.name ?: r.modInput}${r.message?.let { " — $it" } ?: ""}")
-                        }
-                    }
-                }
-            },
-        )
     }
 }
 
 @Composable
 private fun SingleModForm(viewModel: EnviarViewModel) {
-    OutlinedTextField(
+    UnderlineField(
         value = viewModel.modInput,
         onValueChange = viewModel::onModInputChange,
-        label = { Text("Link ou slug do Modrinth") },
-        placeholder = { Text("ex: sodium ou https://modrinth.com/mod/sodium") },
-        singleLine = true,
-        modifier = Modifier.fillMaxWidth(),
+        label = "mod do modrinth",
+        placeholder = "https://modrinth.com/mod/sodium ou sodium",
     )
-    Spacer(Modifier.height(10.dp))
-    Button(
+    Spacer(Modifier.height(16.dp))
+    PrimaryStepButton(
+        text = if (viewModel.versionsState is VersionsState.Loading) "identificando…" else "buscar mod",
         onClick = viewModel::fetchVersions,
         enabled = viewModel.modInput.isNotBlank() && viewModel.versionsState !is VersionsState.Loading,
-    ) { Text("Buscar versões") }
+    )
 
     when (val vs = viewModel.versionsState) {
-        is VersionsState.Loading -> {
-            Spacer(Modifier.height(12.dp))
-            CircularProgressIndicator()
-        }
-
         is VersionsState.Error -> {
-            Spacer(Modifier.height(12.dp))
-            Text(vs.message, color = MaterialTheme.colorScheme.error)
+            Spacer(Modifier.height(16.dp))
+            RuleBox { Text(vs.message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary) }
         }
 
         is VersionsState.Loaded -> {
-            Spacer(Modifier.height(16.dp))
-            Text("${vs.modName} — escolha a versão", style = MaterialTheme.typography.titleSmall)
-            Spacer(Modifier.height(6.dp))
-            vs.versions.forEach { v ->
-                val selected = viewModel.selectedVersionId == v.id
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .selectable(selected = selected, onClick = { viewModel.onSelectVersion(v.id) })
-                        .padding(vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    RadioButton(selected = selected, onClick = { viewModel.onSelectVersion(v.id) })
-                    Column {
-                        Text("${v.versionNumber} · MC ${v.gameVersion}")
-                        Text(v.datePublished, style = MaterialTheme.typography.bodySmall)
+            Spacer(Modifier.height(20.dp))
+            RuleBox {
+                Text(vs.modName, style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(16.dp))
+                Text("versão de minecraft", style = MaterialTheme.typography.labelMedium)
+                Spacer(Modifier.height(8.dp))
+                androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    vs.versions.forEach { v ->
+                        FilterPill(
+                            text = v.gameVersion,
+                            active = viewModel.selectedVersionId == v.id,
+                            onClick = { viewModel.onSelectVersion(v.id) },
+                        )
                     }
                 }
-            }
-            Spacer(Modifier.height(10.dp))
-            Button(
-                onClick = viewModel::submitSingle,
-                enabled = viewModel.selectedVersionId != null && !viewModel.isSubmitting,
-            ) {
-                if (viewModel.isSubmitting) {
-                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                } else {
-                    Text("Adicionar ao catálogo")
-                }
+                Spacer(Modifier.height(20.dp))
+                PrimaryStepButton(
+                    text = if (viewModel.isSubmitting) "enviando…" else "adicionar ao catálogo",
+                    onClick = viewModel::submitSingle,
+                    enabled = viewModel.selectedVersionId != null && !viewModel.isSubmitting,
+                )
             }
         }
 
-        VersionsState.Idle -> Unit
+        VersionsState.Idle, VersionsState.Loading -> Unit
     }
 }
 
 @Composable
 private fun BulkModForm(viewModel: EnviarViewModel) {
     Text(
-        "Um link ou slug do Modrinth por linha. Cada mod é adicionado na versão mais nova disponível.",
+        "Um link ou slug do Modrinth por linha.",
         style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
-    Spacer(Modifier.height(8.dp))
-    OutlinedTextField(
+    Spacer(Modifier.height(12.dp))
+    UnderlineField(
         value = viewModel.bulkInput,
         onValueChange = viewModel::onBulkInputChange,
-        placeholder = { Text("sodium\nlithium\nhttps://modrinth.com/mod/iris") },
-        modifier = Modifier.fillMaxWidth().height(160.dp),
+        label = "mods do modrinth",
+        placeholder = "sodium\nlithium\nhttps://modrinth.com/mod/iris",
+        singleLine = false,
+        minLines = 5,
     )
-    Spacer(Modifier.height(10.dp))
-    Button(
+    Spacer(Modifier.height(16.dp))
+    PrimaryStepButton(
+        text = if (viewModel.isSubmitting) "enviando…" else "enviar todos",
         onClick = viewModel::submitBulk,
         enabled = viewModel.bulkInput.isNotBlank() && !viewModel.isSubmitting,
-    ) {
-        if (viewModel.isSubmitting) {
-            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-        } else {
-            Text("Adicionar todos")
+    )
+}
+
+@Composable
+private fun OutcomePanel(outcome: SubmitOutcome) {
+    RuleBox {
+        when (outcome) {
+            is SubmitOutcome.Single -> {
+                Text("adicionado com sucesso", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.height(6.dp))
+                Text(outcome.modName, style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "O mod aparece no catálogo depois que o deploy da Vercel terminar (~1 min).",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
+            is SubmitOutcome.Bulk -> {
+                val ok = outcome.results.count { it.status == "ok" }
+                Text(
+                    "$ok de ${outcome.results.size} adicionados",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                Spacer(Modifier.height(10.dp))
+                outcome.results.forEach { r ->
+                    val ok2 = r.status == "ok"
+                    Text(
+                        if (ok2) "✓ ${r.mod?.name ?: r.modInput}" else "✕ ${r.modInput} — ${r.message}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (ok2) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(vertical = 2.dp),
+                    )
+                }
+            }
         }
     }
 }
